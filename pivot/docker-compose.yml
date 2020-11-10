@@ -1,0 +1,13 @@
+version: "3.8"
+services:
+  pivot:
+    build: .
+    image: ${APP_NAME}_pivot
+    environment:
+      - APP_NAME=${APP_NAME}
+      - COMPOSE_PROJECT_NAME=${APP_NAME}
+      - PORT=${PORT}
+      - SAMPLE_RECORDS=${SAMPLE_RECORDS}
+      - STREAMLIT_DATA=pickled_data_sample_${SAMPLE_RECORDS}k.pkl
+    ports:
+      - "${PORT}:${PORT}"
