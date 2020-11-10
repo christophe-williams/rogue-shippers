@@ -19,41 +19,39 @@ DOCKER_REPO=$(AWS_ACCOUNT).dkr.ecr.$(AWS_CLI_REGION).amazonaws.com
 
 # DOCKER TASKS
 # Build
-build: ## Build the container
-	docker build -t $(APP_NAME) .
+data-prep: ## Transfer data for Docker build
+	rm -rf ./data/*
+	yes | cp -rf ../app_data/pickled_data_sample_${SAMPLE_RECORDS}k.pkl ./data/
 
-build-nc: ## Build the container without caching
-	docker build --no-cache -t $(APP_NAME) .
+build: data-prep ## Build the service
+	docker-compose build
 
-build-image: ## Build the image
-	docker image build -t $(APP_NAME) .
-
-build-image-nc: ## Build the image without caching
-	docker image build --no-cache -t $(APP_NAME) .
+build-nc: data-prep ## Build the service without caching
+	docker-compose build --no-cache
 
 # Run
 run: ## Run container on port configured in `config.env`
-	docker run -i -t --rm --env-file=./.env -p=$(PORT):$(PORT) --name="$(APP_NAME)" $(APP_NAME)
+	docker stop $(IMG_NAME) || true
+	# TODO: merge this with docker-compose for env var handling
+	docker run -i -t --rm --env-file=./.env -p=$(PORT):$(PORT) -e STREAMLIT_DATA="pickled_data_sample_${SAMPLE_RECORDS}k.pkl" --name="$(IMG_NAME)" $(IMG_NAME)
 
 up: build run ## Run container on port configured in `config.env` (Alias to run)
 
-refresh: build-image up ## Rebuild image before running
-
 stop: ## Stop and remove a running container
-	docker stop $(APP_NAME); docker rm $(APP_NAME)
+	docker stop $(IMG_NAME); docker rm $(IMG_NAME)
 
 release: build-nc publish ## Make a release by building and publishing the `{version}` ans `latest` tagged containers to ECR
 
 
 # Publish
 check-repo:
-	aws ecr describe-repositories --repository-names $(APP_NAME) || aws ecr create-repository --repository-name $(APP_NAME)
+	aws ecr describe-repositories --repository-names $(IMG_NAME) || aws ecr create-repository --repository-name $(IMG_NAME)
 
 publish: repo-login publish-latest # publish-version ## Publish the `latest` tagged containers to ECR
 
-publish-latest: tag-latest ## Publish the `latest` taged container to ECR
+publish-latest: check-repo tag-latest ## Publish the `latest` taged container to ECR
 	@echo 'publish latest to $(DOCKER_REPO)'
-	docker push $(DOCKER_REPO)/$(APP_NAME):latest
+	docker push $(DOCKER_REPO)/$(IMG_NAME):latest
 
 #publish-version: tag-version ## Publish the `{version}` taged container to ECR
 #	@echo 'publish $(VERSION) to $(DOCKER_REPO)'
@@ -64,7 +62,7 @@ tag: tag-latest # tag-version ## Generate container tags for `latest` tags
 
 tag-latest: ## Generate container `latest` tag
 	@echo 'create tag latest'
-	docker tag $(APP_NAME) $(DOCKER_REPO)/$(APP_NAME):latest
+	docker tag $(IMG_NAME) $(DOCKER_REPO)/$(IMG_NAME):latest
 
 #tag-version: ## Generate container `latest` tag
 #	@echo 'create tag $(VERSION)'

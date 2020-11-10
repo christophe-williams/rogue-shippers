@@ -10,17 +10,17 @@ RUN apt-get update &&\
 # exposing default port for streamlit
 EXPOSE $PORT
 
-# making directory of app
+# making directory of pivot
 WORKDIR /streamlit-docker
 
 # install pip then packages
 RUN pip3 install --quiet streamlit pivottablejs joblib
 
-# copying all files over
+# copying files over
 COPY src ./src
-COPY data ./data
+COPY data/$STREAMLIT_DATA ./data/$STREAMLIT_DATA
 
-# cmd to launch app when container is run
+# cmd to launch pivot when container is run
 CMD ["streamlit", "run", "src/pivot.py"]
 
 # streamlit-specific commands for config
